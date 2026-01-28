@@ -1,0 +1,83 @@
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #82d6bf;
+  --primary-hover: #6bc2ab;
+  --bg-color: #ffffff;
+  --text-main: #1a1a1a;
+  --text-sub: #888888;
+}
+
+/* Pretendard Font Application */
+body {
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  @apply bg-transparent text-gray-900;
+}
+
+/* Theme Classes */
+.theme-pink {
+  --primary-color: #ff8ba0;
+  --primary-hover: #e86b84;
+}
+
+.theme-blue {
+  --primary-color: #7abaff;
+  --primary-hover: #5a9ee6;
+}
+
+.theme-purple {
+  --primary-color: #a48eff;
+  --primary-hover: #866ee6;
+}
+
+.theme-gray {
+  --primary-color: #6b7280;
+  --primary-hover: #4b5563;
+}
+
+/* Custom Scrollbar - Slim & Modern */
+::-webkit-scrollbar {
+  width: 4px;
+  /* Thinner */
+  height: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #e5e7eb;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #d1d5db;
+}
+
+::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Glass Effect helpers */
+.glass {
+  @apply bg-white/80 backdrop-blur-md border border-white/20;
+}
