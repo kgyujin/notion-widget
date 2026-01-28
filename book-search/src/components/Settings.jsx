@@ -177,7 +177,8 @@ export default function Settings({ initialConfig, onSave, currentTheme, onThemeC
                                     return;
                                 }
                                 const json = JSON.stringify(formData);
-                                const encoded = btoa(json);
+                                // Fix: Use encodeURIComponent for UTF-8 support (Korean characters)
+                                const encoded = btoa(encodeURIComponent(json));
                                 const url = `${window.location.origin}${window.location.pathname}?config=${encoded}`;
                                 navigator.clipboard.writeText(url);
                                 alert('🔐 설정이 포함된 주소가 복사되었습니다!\n이 주소를 Notion에 임베드하면 어디서든 바로 사용할 수 있습니다.\n(주의: 이 주소는 타인에게 공유하지 마세요.)');

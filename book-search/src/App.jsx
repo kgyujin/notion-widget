@@ -15,8 +15,8 @@ export default function App() {
 
     if (configParam) {
       try {
-        // Decode Base64 -> JSON
-        const decoded = JSON.parse(atob(configParam));
+        // Decode Base64 -> UTF-8 -> JSON
+        const decoded = JSON.parse(decodeURIComponent(atob(configParam)));
         setConfig(decoded);
         localStorage.setItem('notion-book-widget-config', JSON.stringify(decoded)); // Sync to local
         return; // Skip normal load
