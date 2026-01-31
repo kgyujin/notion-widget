@@ -4,18 +4,12 @@ import { Client } from '@notionhq/client';
 
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method Not Allowed' });
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
     const { query, config } = req.body;
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     const ALADIN_TTBKEY = process.env.ALADIN_TTBKEY;
-
-    // Debug logging
-    console.log("Checking Env Vars:", {
-        hasGemini: !!GEMINI_API_KEY,
-        hasAladin: !!ALADIN_TTBKEY
-    });
 
     if (!GEMINI_API_KEY || !ALADIN_TTBKEY) {
         return res.status(500).json({ error: 'Server configuration error: Missing API Keys. Check Vercel Env Vars or .env file.' });
@@ -31,63 +25,21 @@ export default async function handler(req, res) {
 
     try {
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        // Using 'gemini-2.5-flash' as verified by available models list
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `
         Recommend 5 books based on this request: "${query}".
-        Return ONLY a JSON array of objects. No markdown, no extra text.
-        Format: [{"title": "Book Title", "author": "Author Name"}]
-        Language: Korean.
-        If the request is vague, recommend popular high-rated books.
+        Return ONLY a JSON array. Do not use Markdown codes.
+        Each object must have:
+        - "title" (Exact Korean Book Title)
+        - "author" (Korean Author Name)
+        - "reason" (A short, friendly sentence explaining why this book is recommended for this specific request, in Korean. Use a warm and empathetic tone.)
         `;
 
         const result = await model.generateContent(prompt);
         const responseText = result.response.text();
-
         const jsonStr = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-        let recommendations = [];
-        try {
-            recommendations = JSON.parse(jsonStr);
-        } catch (e) {
-            console.error("Gemini Parse Error", e, responseText);
-            return res.status(500).json({ error: "AI failed to generate valid recommendations." });
-        }
-
-        const notion = new Client({ auth: config.notionToken });
-        const { databaseId, propertyMap } = config;
-
-        const checkNotion = async (title, author) => {
-            try {
-                const response = await notion.databases.query({
-                    database_id: databaseId,
-                    filter: {
-                        property: propertyMap.title,
-                        title: { contains: title.split(' ')[0] }
-                    }
-                });
-
-                const found = response.results.find(page => {
-                    const pTitle = page.properties[propertyMap.title]?.title?.[0]?.plain_text || "";
-                    return pTitle.includes(title) || title.includes(pTitle);
-                });
-
-                if (found) {
-                    let status = null;
-                    if (config.statusProp && found.properties[config.statusProp]) {
-                        const sProp = found.properties[config.statusProp];
-                        if (sProp.type === 'status') status = sProp.status?.name;
-                        else if (sProp.type === 'select') status = sProp.select?.name;
-                    }
-                    return { id: found.id, status };
-                }
-                return null;
-
-            } catch (e) {
-                console.warn("Notion check failed for", title, e);
-                return null;
-            }
-        };
+        const recommendations = JSON.parse(jsonStr);
 
         const fetchAladin = async (title, author) => {
             try {
@@ -99,7 +51,7 @@ export default async function handler(req, res) {
                         MaxResults: 1,
                         start: 1,
                         SearchTarget: 'Book',
-                        output: 'js',
+                        Output: 'JS',
                         Version: '20131101'
                     }
                 });
@@ -109,39 +61,72 @@ export default async function handler(req, res) {
                     return {
                         title: item.title,
                         author: item.author.replace(/\s*\(.+?\)$/, ''),
-                        cover: item.cover.replace('/coversum/', '/cover500/'),
-                        link: item.link,
-                        isbn: item.isbn13 || item.isbn,
+                        cover: item.cover.replace('coversum', 'cover500'),
                         publisher: item.publisher,
-                        categoryName: item.categoryName
+                        categoryName: item.categoryName.split('>')[1] || item.categoryName,
+                        isbn: item.isbn13 || item.isbn,
+                        link: item.link,
+                        description: item.description
                     };
                 }
                 return null;
             } catch (e) {
-                console.warn("Aladin fetch failed for", title);
+                console.error(`Aladin API Error for ${title}:`, e.message);
+                return null;
+            }
+        };
+
+        const checkNotion = async (title, author) => {
+            try {
+                const notion = new Client({ auth: config.notionToken });
+
+                const response = await notion.databases.query({
+                    database_id: config.databaseId,
+                    filter: {
+                        and: [
+                            {
+                                property: config.propertyMap.title,
+                                title: { equals: title }
+                            }
+                        ]
+                    }
+                });
+
+                if (response.results.length > 0) {
+                    const page = response.results[0];
+                    let status = null;
+                    if (config.statusProp && page.properties[config.statusProp]) {
+                        const prop = page.properties[config.statusProp];
+                        if (prop.type === 'status') status = prop.status?.name;
+                        else if (prop.type === 'select') status = prop.select?.name;
+                    }
+                    return { id: page.id, status };
+                }
+                return null;
+            } catch (e) {
+                console.error("Notion Check Error:", e.message);
                 return null;
             }
         };
 
         const finalResults = await Promise.all(recommendations.map(async (rec) => {
             const aladinData = await fetchAladin(rec.title, rec.author);
-
             if (!aladinData) return null;
 
             const notionData = await checkNotion(aladinData.title, aladinData.author);
 
             return {
                 ...aladinData,
+                reason: rec.reason,
                 existingPageId: notionData?.id || null,
                 currentStatus: notionData?.status || null
             };
         }));
 
-        res.status(200).json(finalResults.filter(r => r !== null));
+        res.status(200).json(finalResults.filter(Boolean));
 
     } catch (error) {
         console.error('AI Recommend Error:', error);
-        // Return more detailed error for debugging
         res.status(500).json({
             error: error.message || 'AI Processing Failed',
             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
