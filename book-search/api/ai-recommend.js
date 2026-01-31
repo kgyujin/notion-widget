@@ -11,8 +11,18 @@ export default async function handler(req, res) {
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     const ALADIN_TTBKEY = process.env.ALADIN_TTBKEY;
 
+    // Debug logging
+    console.log("Checking Env Vars:", {
+        hasGemini: !!GEMINI_API_KEY,
+        hasAladin: !!ALADIN_TTBKEY
+    });
+
     if (!GEMINI_API_KEY || !ALADIN_TTBKEY) {
-        return res.status(500).json({ error: 'Server configuration error: Missing API Keys' });
+        return res.status(500).json({ error: 'Server configuration error: Missing API Keys. Check Vercel Env Vars or .env file.' });
+    }
+
+    if (!config) {
+        return res.status(400).json({ error: 'Client configuration (Notion Token/DB ID) is missing.' });
     }
 
     if (!query) {
@@ -130,6 +140,11 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('AI Recommend Error:', error);
-        res.status(500).json({ error: error.message || 'AI Processing Failed' });
+        // Return more detailed error for debugging
+        res.status(500).json({
+            error: error.message || 'AI Processing Failed',
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+            details: error.response?.data || 'No external API response details'
+        });
     }
 }
