@@ -31,7 +31,8 @@ export default async function handler(req, res) {
 
     try {
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        // 'gemini-pro' deprecated/not found. Using 'gemini-1.5-flash' for better speed and availability.
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         const prompt = `
         Recommend 5 books based on this request: "${query}".
