@@ -23,7 +23,6 @@ export default async function handler(req, res) {
             cover: "표지"
         };
 
-        // 1. Fetch Database Schema to check Property Types
         let dbSchemaProperties = {};
         try {
             const dbInfo = await notion.databases.retrieve({ database_id: databaseId });
@@ -51,7 +50,6 @@ export default async function handler(req, res) {
                     select: { name: cleanValue.replace(/,/g, ' /') }
                 };
             } else if (type === 'multi_select') {
-                // Split by comma or slash for multiple values
                 const values = String(value).split(/[,\/]/).map(v => v.trim()).filter(v => v.length > 0);
                 return {
                     multi_select: values.map(v => ({ name: v.substring(0, 100) }))
@@ -73,7 +71,6 @@ export default async function handler(req, res) {
             };
         };
 
-        // 3. Search for existing book
         const normalize = (str) => String(str).replace(/\(.*\)/g, '').replace(/\s+/g, '').toLowerCase();
         const bookTitleClean = normalize(book.title);
         const bookAuthorClean = normalize(book.author);
@@ -88,18 +85,15 @@ export default async function handler(req, res) {
                 filter: {
                     property: p.title,
                     title: {
-                        contains: book.title.split(' ')[0] // Search by first word to be broader, then filter in JS
+                        contains: book.title.split(' ')[0]
                     }
                 }
             });
 
-            // Find best match
             for (const page of queryResponse.results) {
-                // Get Title
                 const pageTitleProp = page.properties[p.title];
                 const pageTitleRaw = pageTitleProp?.title?.map(t => t.plain_text).join('') || "";
 
-                // Get Author (if mapped and exists)
                 let pageAuthorRaw = "";
                 if (p.author && page.properties[p.author]) {
                     const type = page.properties[p.author].type;
@@ -111,10 +105,6 @@ export default async function handler(req, res) {
                 const pageTitleNorm = normalize(pageTitleRaw);
                 const pageAuthorNorm = normalize(pageAuthorRaw);
 
-                // Logic: 
-                // 1. Exact Title Match -> Match
-                // 2. Partial Title Match (one includes other) AND Author Match -> Match
-
                 const titleMatch = pageTitleNorm === bookTitleClean;
                 const titleSimilar = pageTitleNorm.includes(bookTitleClean) || bookTitleClean.includes(pageTitleNorm);
                 const authorMatch = bookAuthorClean && pageAuthorNorm && (pageAuthorNorm.includes(bookAuthorClean) || bookAuthorClean.includes(pageAuthorNorm));
@@ -123,14 +113,13 @@ export default async function handler(req, res) {
                     pageIdToUpdate = page.id;
                     foundPageTitle = pageTitleRaw;
                     foundPageAuthor = pageAuthorRaw;
-                    break; // Stop at first good match
+                    break;
                 }
             }
         } catch (searchError) {
             console.warn("Duplicate check warning:", searchError);
         }
 
-        // 3. Check for Confirmation
         if (pageIdToUpdate && !confirm) {
             return res.status(200).json({
                 action: 'confirm_required',
@@ -141,7 +130,6 @@ export default async function handler(req, res) {
             });
         }
 
-        // 4. Construct Properties Payload
         const properties = {};
 
         if (p.title) properties[p.title] = { title: [{ text: { content: book.title } }] };
@@ -174,26 +162,22 @@ export default async function handler(req, res) {
             } else if (type === 'url') {
                 properties[p.cover] = { url: book.cover };
             } else {
-                // Fallback for text/rich_text
                 properties[p.cover] = {
                     rich_text: [{ text: { content: book.cover } }]
                 };
             }
         }
 
-        // 5. Create or Update
         let response;
         let action = 'created';
 
         if (pageIdToUpdate) {
-            // UPDATE
             response = await notion.pages.update({
                 page_id: pageIdToUpdate,
                 properties: properties,
             });
             action = 'updated';
         } else {
-            // CREATE
             response = await notion.pages.create({
                 parent: { database_id: databaseId },
                 properties: properties,

@@ -13,7 +13,10 @@ export default function Settings({ initialConfig, onSave, currentTheme, onThemeC
     const [formData, setFormData] = useState(initialConfig || {
         notionToken: '',
         databaseId: '',
-        propertyMap: { title: '제목', author: '지은이', publisher: '출판사', category: '장르', cover: '책 표지' }
+        propertyMap: { title: '제목', author: '지은이', publisher: '출판사', category: '장르', cover: '책 표지' },
+        statusProp: 'Status',
+        statusValUnread: 'To Read',
+        statusValReading: 'Reading'
     });
     const [showHelp, setShowHelp] = useState(false);
 
@@ -118,7 +121,7 @@ export default function Settings({ initialConfig, onSave, currentTheme, onThemeC
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">속성 매핑</h3>
+                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">속성 매핑 (기본)</h3>
                     </div>
 
                     <div className="grid grid-cols-1 gap-2">
@@ -144,6 +147,50 @@ export default function Settings({ initialConfig, onSave, currentTheme, onThemeC
                     </div>
                 </div>
 
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                            상태 매핑 <span className="text-[9px] font-normal text-gray-300 normal-case">(AI/내 서재 추천용)</span>
+                        </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2">
+                        <div className="flex items-center gap-2">
+                            <label className="w-16 text-[11px] font-medium text-gray-500 text-right">상태 속성명</label>
+                            <input
+                                type="text"
+                                name="statusProp"
+                                value={formData.statusProp || ''}
+                                onChange={handleChange}
+                                placeholder="예: Status, 상태"
+                                className="flex-1 px-3 py-1.5 bg-gray-50 border border-transparent rounded focus:bg-white focus:border-primary outline-none text-xs transition-colors"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="w-16 text-[11px] font-medium text-gray-500 text-right">읽지 않음</label>
+                            <input
+                                type="text"
+                                name="statusValUnread"
+                                value={formData.statusValUnread || ''}
+                                onChange={handleChange}
+                                placeholder="예: To Read, 읽을 예정"
+                                className="flex-1 px-3 py-1.5 bg-gray-50 border border-transparent rounded focus:bg-white focus:border-primary outline-none text-xs transition-colors"
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="w-16 text-[11px] font-medium text-gray-500 text-right">읽는 중</label>
+                            <input
+                                type="text"
+                                name="statusValReading"
+                                value={formData.statusValReading || ''}
+                                onChange={handleChange}
+                                placeholder="예: Reading, 읽는 중"
+                                className="flex-1 px-3 py-1.5 bg-gray-50 border border-transparent rounded focus:bg-white focus:border-primary outline-none text-xs transition-colors"
+                            />
+                        </div>
+                    </div>
+                </div>
+
                 <div className="text-center">
                     <p className="text-[10px] text-gray-400 mb-4 max-w-xs mx-auto">
                         🔒 모든 정보는 브라우저(LocalStorage)에만 안전하게 저장됩니다.
@@ -159,7 +206,6 @@ export default function Settings({ initialConfig, onSave, currentTheme, onThemeC
                         <button
                             type="button"
                             onClick={() => {
-                                // Basic URL copy
                                 const url = window.location.origin + window.location.pathname;
                                 navigator.clipboard.writeText(url);
                                 alert('기본 위젯 주소가 복사되었습니다.\n(설정이 브라우저에 저장된 기기에서만 작동합니다)');
@@ -171,13 +217,11 @@ export default function Settings({ initialConfig, onSave, currentTheme, onThemeC
                         <button
                             type="button"
                             onClick={() => {
-                                // Portable URL copy (Base64 Encoded)
                                 if (!formData.notionToken || !formData.databaseId) {
                                     alert('설정을 먼저 입력해주세요.');
                                     return;
                                 }
                                 const json = JSON.stringify(formData);
-                                // Fix: Use encodeURIComponent for UTF-8 support (Korean characters)
                                 const encoded = btoa(encodeURIComponent(json));
                                 const url = `${window.location.origin}${window.location.pathname}?config=${encoded}`;
                                 navigator.clipboard.writeText(url);

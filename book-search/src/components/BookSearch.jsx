@@ -11,7 +11,6 @@ export default function BookSearch({ config }) {
     const [addingId, setAddingId] = useState(null);
     const [message, setMessage] = useState(null);
 
-    // Modal State
     const [showModal, setShowModal] = useState(false);
     const [pendingBook, setPendingBook] = useState(null);
 
@@ -45,10 +44,9 @@ export default function BookSearch({ config }) {
                 databaseId: config.databaseId,
                 propertyMap: config.propertyMap,
                 book,
-                confirm: confirm // Send confirmation flag
+                confirm: confirm
             });
 
-            // Handle "Confirm Required"
             if (res.data.action === 'confirm_required') {
                 setPendingBook({
                     ...book,
@@ -56,7 +54,7 @@ export default function BookSearch({ config }) {
                     foundAuthor: res.data.foundAuthor
                 });
                 setShowModal(true);
-                return; // Stop here, wait for user interaction
+                return;
             }
 
             setMessage({ type: 'success', text: res.data.action === 'updated' ? `"${book.title}" 업데이트 완료!` : `"${book.title}" 저장 완료!` });
@@ -67,7 +65,6 @@ export default function BookSearch({ config }) {
         } finally {
             setAddingId(null);
             if (!showModal) {
-                // Clear success message after 3 seconds only if not showing modal
                 setTimeout(() => setMessage(null), 3000);
             }
         }
@@ -76,7 +73,7 @@ export default function BookSearch({ config }) {
     const confirmOverwrite = () => {
         if (pendingBook) {
             setShowModal(false);
-            handleAddBook(pendingBook, true); // Call with confirm=true
+            handleAddBook(pendingBook, true);
             setPendingBook(null);
         }
     };

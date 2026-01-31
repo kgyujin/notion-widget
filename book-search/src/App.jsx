@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Search as SearchIcon, BookOpen, ArrowLeft } from 'lucide-react';
+import { Settings as SettingsIcon, Search as SearchIcon, BookOpen, ArrowLeft, Send, Sparkles, RefreshCw } from 'lucide-react';
 import BookSearch from './components/BookSearch';
 import Settings from './components/Settings';
+import AIRecommend from './components/AIRecommend';
+import MyPick from './components/MyPick';
 
 export default function App() {
   const [view, setView] = useState('search');
@@ -9,23 +11,20 @@ export default function App() {
   const [theme, setTheme] = useState('default');
 
   useEffect(() => {
-    // 1. Check URL params for portable config
     const params = new URLSearchParams(window.location.search);
     const configParam = params.get('config');
 
     if (configParam) {
       try {
-        // Decode Base64 -> UTF-8 -> JSON
         const decoded = JSON.parse(decodeURIComponent(atob(configParam)));
         setConfig(decoded);
-        localStorage.setItem('notion-book-widget-config', JSON.stringify(decoded)); // Sync to local
-        return; // Skip normal load
+        localStorage.setItem('notion-book-widget-config', JSON.stringify(decoded));
+        return;
       } catch (e) {
         console.error("Failed to parse config from URL", e);
       }
     }
 
-    // 2. Load from LocalStorage
     const savedConfig = localStorage.getItem('notion-book-widget-config');
     if (savedConfig) {
       setConfig(JSON.parse(savedConfig));
@@ -58,36 +57,71 @@ export default function App() {
     applyTheme(newTheme);
   };
 
-  return (
-    <div className="h-screen bg-white text-gray-800 transition-colors duration-300 overflow-hidden">
-      <div className="w-full h-full flex flex-col relative px-4 py-2">
-        <header className="flex items-center justify-between mb-0.5 py-1">
-          <button
-            onClick={() => setView(view === 'search' ? 'settings' : 'search')}
-            className="p-1.5 rounded-md hover:bg-gray-50 text-gray-500 hover:text-gray-900 transition-all active:scale-95"
-            aria-label={view === 'search' ? "Settings" : "Back to Search"}
-            title={view === 'search' ? "설정 (Settings)" : "검색으로 돌아가기"}
-          >
-            {view === 'search' ? <SettingsIcon size={16} /> : <div className="flex items-center gap-1 text-[10px] font-semibold"><ArrowLeft size={14} /> 이전</div>}
-          </button>
+  const NavButton = ({ active, icon: Icon, onClick, label }) => (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center gap-0.5 p-2 rounded-xl transition-all w-16
+          ${active
+          ? 'bg-primary/10 text-primary scale-105 font-bold shadow-sm'
+          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+    >
+      <Icon size={18} strokeWidth={active ? 2.5 : 2} />
+      <span className="text-[9px]">{label}</span>
+    </button>
+  );
 
-          <div className="flex items-center gap-2">
-            <div className="bg-primary/10 p-1 rounded-md text-primary">
-              <BookOpen className="w-3.5 h-3.5" />
+  return (
+    <div className="h-screen bg-white text-gray-800 transition-colors duration-300 overflow-hidden flex flex-col">
+      <div className="w-full flex-1 relative flex flex-col overflow-hidden">
+        <header className="px-4 py-3 flex items-center justify-between bg-white flex-shrink-0">
+          {view === 'settings' ? (
+            <button
+              onClick={() => setView('search')}
+              className="flex items-center gap-1 text-[11px] font-bold text-gray-500 hover:text-gray-900 bg-gray-100 px-2 py-1 rounded-lg transition-colors"
+            >
+              <ArrowLeft size={14} /> 이전
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="bg-primary/10 p-1.5 rounded-lg text-primary">
+                <BookOpen className="w-4 h-4" strokeWidth={2.5} />
+              </div>
+              <h1 className="text-sm font-bold text-gray-800 tracking-tight">Book Widget</h1>
             </div>
-          </div>
+          )}
+
+          <button
+            onClick={() => setView('settings')}
+            className={`p-1.5 rounded-lg transition-all ${view === 'settings' ? 'bg-primary text-white' : 'hover:bg-gray-100 text-gray-400'}`}
+          >
+            <SettingsIcon size={16} />
+          </button>
         </header>
 
-        <main className="flex-1 relative overflow-hidden flex flex-col">
+        <main className="flex-1 relative overflow-hidden flex flex-col pb-2">
           {view === 'settings' ? (
-            <Settings
-              initialConfig={config}
-              onSave={handleSaveSettings}
-              currentTheme={theme}
-              onThemeChange={handleThemeChange}
-            />
+            <div className="px-4 h-full overflow-y-auto custom-scrollbar">
+              <Settings
+                initialConfig={config}
+                onSave={handleSaveSettings}
+                currentTheme={theme}
+                onThemeChange={handleThemeChange}
+              />
+            </div>
           ) : (
-            <BookSearch config={config} />
+            <>
+              <div className="flex-1 overflow-hidden relative">
+                {view === 'search' && <BookSearch config={config} />}
+                {view === 'ai' && <AIRecommend config={config} />}
+                {view === 'mypick' && <MyPick config={config} />}
+              </div>
+
+              <div className="px-6 py-2 pb-4 bg-white/90 backdrop-blur border-t border-gray-50 flex justify-between items-center z-20">
+                <NavButton active={view === 'search'} icon={SearchIcon} onClick={() => setView('search')} label="검색" />
+                <NavButton active={view === 'ai'} icon={Sparkles} onClick={() => setView('ai')} label="AI 추천" />
+                <NavButton active={view === 'mypick'} icon={RefreshCw} onClick={() => setView('mypick')} label="내 서재 픽" />
+              </div>
+            </>
           )}
         </main>
       </div>
