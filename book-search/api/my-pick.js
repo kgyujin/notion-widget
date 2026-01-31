@@ -15,6 +15,15 @@ export default async function handler(req, res) {
     const notion = new Client({ auth: notionToken });
 
     try {
+        // First, retrieve the database schema to check the property type
+        const db = await notion.databases.retrieve({ database_id: databaseId });
+        const schemaProps = db.properties;
+
+        const targetProp = schemaProps[statusProp];
+        if (!targetProp) {
+            return res.status(400).json({ error: `Property "${statusProp}" does not exist in the database.` });
+        }
+
         let filter;
         if (targetProp.type === 'status') {
             filter = { property: statusProp, status: { equals: statusValUnread } };
